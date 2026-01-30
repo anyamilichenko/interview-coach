@@ -13,6 +13,9 @@ def run_interactive_mode():
     print(Fore.CYAN + "MULTI-AGENT INTERVIEW COACH SYSTEM")
     print(Fore.CYAN + "=" * 60)
 
+    from main import interview_coach
+    interview_coach.reset()
+
     print(Fore.YELLOW + "\nВведите информацию о кандидате:")
     participant_name = input(Fore.GREEN + "Имя кандидата: ").strip()
     position = input(Fore.GREEN + "Позиция (например, Backend Developer): ").strip()

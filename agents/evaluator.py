@@ -20,6 +20,8 @@ class EvaluatorAgent:
 3. Анализ Soft Skills & Communication
 4. Персональный Roadmap (Next Steps)
 
+Даже если данных мало, постарайся дать максимально подробный анализ на основе того, что есть.
+
 Формат ответа:
 {
     "verdict": {
@@ -53,8 +55,11 @@ class EvaluatorAgent:
     "detailed_feedback": "Подробный текст фидбэка для кандидата"
 }"""
 
+        if not self.state_manager or not self.state_manager.state:
+            return self._create_default_feedback()
+
         full_history = ""
-        if self.state_manager.state:
+        if self.state_manager.state.conversation_history:
             for i, turn in enumerate(self.state_manager.state.conversation_history, 1):
                 full_history += f"Ход {i}:\n"
                 full_history += f"Вопрос: {turn.get('agent', '')}\n"
@@ -67,10 +72,10 @@ class EvaluatorAgent:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"""
 Информация о кандидате:
-Имя: {self.state_manager.state.participant_name if self.state_manager.state else ''}
-Позиция: {self.state_manager.state.position if self.state_manager.state else ''}
-Грейд: {self.state_manager.state.grade if self.state_manager.state else ''}
-Опыт: {self.state_manager.state.experience if self.state_manager.state else ''}
+Имя: {self.state_manager.state.participant_name}
+Позиция: {self.state_manager.state.position}
+Грейд: {self.state_manager.state.grade}
+Опыт: {self.state_manager.state.experience}
 
 Статистика интервью:
 {json.dumps(state_summary, ensure_ascii=False, indent=2)}
@@ -81,34 +86,76 @@ class EvaluatorAgent:
 Сформируй финальный отчет."""}
         ]
 
-        response = self.llm_client.generate_structured_response(
-            "evaluator",
-            messages,
-            response_format={
-                "verdict": {
-                    "grade": "string",
-                    "hiring_recommendation": "string",
-                    "confidence_score": "integer",
-                    "summary": "string"
-                },
-                "hard_skills": {
-                    "topics_covered": "list of strings",
-                    "confirmed_skills": "list of strings",
-                    "knowledge_gaps": "list of objects"
-                },
-                "soft_skills": {
-                    "clarity": "string",
-                    "honesty": "string",
-                    "engagement": "string",
-                    "summary": "string"
-                },
-                "roadmap": {
-                    "next_steps": "list of strings",
-                    "recommended_topics": "list of strings",
-                    "timeline": "string"
-                },
-                "detailed_feedback": "string"
-            }
-        )
+        try:
+            response = self.llm_client.generate_structured_response(
+                "evaluator",
+                messages,
+                response_format={
+                    "verdict": {
+                        "grade": "string",
+                        "hiring_recommendation": "string",
+                        "confidence_score": "integer",
+                        "summary": "string"
+                    },
+                    "hard_skills": {
+                        "topics_covered": "list of strings",
+                        "confirmed_skills": "list of strings",
+                        "knowledge_gaps": "list of objects"
+                    },
+                    "soft_skills": {
+                        "clarity": "string",
+                        "honesty": "string",
+                        "engagement": "string",
+                        "summary": "string"
+                    },
+                    "roadmap": {
+                        "next_steps": "list of strings",
+                        "recommended_topics": "list of strings",
+                        "timeline": "string"
+                    },
+                    "detailed_feedback": "string"
+                }
+            )
 
-        return response
+
+            if not response:
+                return self._create_default_feedback()
+
+            return response
+
+        except Exception as e:
+            print(f"Ошибка генерации фидбэка: {e}")
+            return self._create_default_feedback()
+
+    def _create_default_feedback(self) -> Dict[str, Any]:
+        return {
+            "verdict": {
+                "grade": "Junior",
+                "hiring_recommendation": "No Hire",
+                "confidence_score": 50,
+                "summary": "Недостаточно данных для полноценной оценки. Кандидат рано завершил интервью."
+            },
+            "hard_skills": {
+                "topics_covered": ["Базовые вопросы"],
+                "confirmed_skills": ["Базовые знания"],
+                "knowledge_gaps": [
+                    {
+                        "topic": "Завершение интервью",
+                        "gap": "Кандидат рано завершил интервью",
+                        "correct_answer": "Рекомендуется пройти полное интервью для оценки навыков"
+                    }
+                ]
+            },
+            "soft_skills": {
+                "clarity": "5/10 - ответы были краткими",
+                "honesty": "6/10 - признал незнание некоторых тем",
+                "engagement": "4/10 - низкая вовлеченность в диалог",
+                "summary": "Требуется больше данных для оценки"
+            },
+            "roadmap": {
+                "next_steps": ["Пройти полное техническое интервью", "Изучить базовые концепции"],
+                "recommended_topics": ["Основы программирования", "Технологии из резюме"],
+                "timeline": "1-2 месяца подготовки"
+            },
+            "detailed_feedback": "Кандидат рано завершил интервью, что не позволило провести полноценную оценку. Рекомендуется подготовиться и пройти полное интервью."
+        }

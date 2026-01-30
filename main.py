@@ -25,6 +25,15 @@ class MultiAgentInterviewCoach:
         self.is_interview_active = False
         self.turn_count = 0
 
+    def reset(self):
+        self.state_manager = StateManager()
+        self.interviewer = None
+        self.observer = None
+        self.evaluator = None
+        self.log_data = None
+        self.is_interview_active = False
+        self.turn_count = 0
+
     def start_interview(self, participant_name: str, position: str,
                         grade: str, experience: str) -> str:
 
